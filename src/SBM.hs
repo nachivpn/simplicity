@@ -26,6 +26,7 @@ data Instr =
     | MoveFrame 
     | DropFrame
     | Read
+    deriving Show
 
 type SBM = State Machine
 

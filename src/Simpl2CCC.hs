@@ -6,12 +6,7 @@ module Simpl2CCC where
 import Simplicity
 import CCC
 
-type family Obj a where
-    Obj ()          = T
-    Obj (a :* b)    = Obj a :*: Obj b
-    Obj (a :+ b)    = Obj a :+: Obj b
-
-simpl2ccc :: Simpl i o -> Mph (Obj i) (Obj o)
+simpl2ccc :: Simpl i o -> Mph i o
 simpl2ccc Iden          = Id
 simpl2ccc (Comp f g)    = simpl2ccc g `O` simpl2ccc f 
 simpl2ccc Unit          = Terminal
