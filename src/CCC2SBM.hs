@@ -1,9 +1,5 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances, ScopedTypeVariables, TypeInType, AllowAmbiguousTypes,FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module CCC2SBM where
 
 import CCC
