@@ -10,7 +10,7 @@ name:                simplicity
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.1.0.0
+version:             0.3.0.0
 
 -- A short (one-line) description of the package.
 -- synopsis:            
@@ -48,7 +48,7 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  -- exposed-modules:     
+  exposed-modules: CCC, Example, SBM, Simpl2CCC, Simplicity, Simpl2SBM
   
   -- Modules included in this library but not exported.
   -- other-modules:       
@@ -58,6 +58,7 @@ library
   
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.10 && <4.11
+                      , mtl
   
   -- Directories containing source files.
   hs-source-dirs:      src
