@@ -1,4 +1,4 @@
-## Simplicity to Closed Cartesian categories
+## Simplicity in Haskell
 
 ### Introduction: Simplicity & CCC
 
