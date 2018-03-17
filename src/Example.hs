@@ -21,15 +21,22 @@ not' :: Simpl SBool SBool
 not' = Comp (Pair Iden Unit) (Case (Injr Unit) (Injl Unit))
 
 example se = do
-        newFrame 1
-        write False
-        moveFrame
-        debugS "Machine state before: "
-        newFrame 1
-        (simpl2sbm se)
-        debugS "Machine state after: "
-        moveFrame
-        readFrame
+    -- allocate bit for value
+    newFrame 1
+    -- write value
+    write False
+    -- move it to read frame (as that is place for input)
+    moveFrame
+    debugS "Machine state before: "
+    -- allocate new frame for result value
+    newFrame 1
+    -- translate (and "run") simplicity expression to SBM instructions
+    (simpl2sbm se)
+    debugS "Machine state after: "
+    -- move result to read frame
+    moveFrame
+    -- read!
+    readFrame
 
 debug = debugS ""
 debugS str = get' >>= \s -> trace (str ++ show s) (return ())
