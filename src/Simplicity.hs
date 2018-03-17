@@ -17,3 +17,4 @@ data Simpl i o where
     Take :: (Types a, Types b, Types c) => Simpl a c -> Simpl (a :*: b) c
     Drop :: (Types a, Types b, Types c) => Simpl b c -> Simpl (a :*: b) c
 
+    

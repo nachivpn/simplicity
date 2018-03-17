@@ -20,42 +20,20 @@ data Machine = Machine {
     writeStack  :: Stack }
     deriving Show
 
--- |Instructions of the simplicity bit machine
-data Instr = 
-    Nop
-    | Write Bit
-    | Copy Int
-    | Skip Int
-    | Fwd Int
-    | Bwd Int
-    | NewFrame Int
-    | MoveFrame 
-    | DropFrame
-    | Read
-    deriving Show
-
--- |Stateful Bit Machine (SBM) monad
+-- -- |Stateful Bit Machine (SBM) monad
 type SBM = State Machine
 
--- |run one instruction in SBM monad
-runInstr :: Instr -> SBM (Maybe Bit)
-runInstr Nop             = return Nothing
-runInstr (Write b)       = write b >> return Nothing
-runInstr (Copy n)        = copy n >> return Nothing
-runInstr (Skip n)        = skip n >> return Nothing
-runInstr (Fwd n)         = fwd n >> return Nothing
-runInstr (Bwd n)         = bwd n >> return Nothing
-runInstr (NewFrame n)    = newFrame n >> return Nothing
-runInstr MoveFrame       = moveFrame >> return Nothing
-runInstr DropFrame       = dropFrame >> return Nothing
-runInstr Read            = uncurry (!!) <$> fst <$> activeFrame readStack
+get' :: SBM Machine
+get' = get
 
--- |run the instructions and return the read bits
-run :: [Instr] -> [Bit]
-run = catMaybes . runS
+-- |run the instructions and return the read bit
+run :: SBM (Maybe Bit) -> Maybe Bit
+run m = evalState m startMachine
     where
-    runS is = evalState (mapM runInstr is) startMachine 
     startMachine = Machine {readStack = [],writeStack = []}
+
+nop :: SBM ()
+nop = return ()
 
 -- |Writes a bit to the current read pointer
 write :: Bit -> SBM ()
@@ -105,8 +83,8 @@ newFrame n = do
 -- |moves active from from write stack to read stack 
 moveFrame :: SBM ()
 moveFrame = do
-    (hws,tws) <- activeFrame writeStack
-    rs' <- (hws :) <$> readStack <$> get
+    ((hwf,_),tws) <- activeFrame writeStack
+    rs' <- ((hwf,0) :) <$> readStack <$> get
     modify (\s -> s {
         writeStack  = tws,
         readStack   = rs'})
@@ -116,6 +94,9 @@ dropFrame :: SBM ()
 dropFrame = do
     trs <- tail <$> readStack <$> get
     modify (\s -> s {readStack  = trs})
+
+readFrame :: SBM (Maybe Bit)
+readFrame = uncurry (!!) <$> fst <$> activeFrame readStack
 
 -- |Returns the active frame (topmost) from a stack 
 activeFrame :: 
