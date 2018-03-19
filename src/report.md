@@ -8,11 +8,9 @@ A recent work [2] presents two Haskell eDSLs: the simply typed lambda calculus a
 
 ### Simplicity eDSL
 
-Taking inspiration from [2], we model Simplicity as a Haskell eDSL and provide a translation from the Simplicty eDSL to the CCC eDSL (extended with co-products). This idea arises from noticing the close correspondence between the typing judgements of Simplicity [1] and the morphisms in the CCC eDSL [2]. For example, the `Iden` expression constructor resembles the `Id` morphism, the sum type in simplicity resembles coproduct objects in CCC, etc.
+Taking inspiration from [2], we model Simplicity as a Haskell eDSL and provide a translation from the Simplicty eDSL to a BCC eDSL (a subset of the CCC eDSL in [2] extended with co-products, but without exponential objects and the curry/eval morphisms). This idea arises from noticing the close correspondence between the typing judgements of Simplicity [1] and the morphisms in the CCC eDSL [2]. For example, the `Iden` expression constructor resembles the `Id` morphism, the sum type in simplicity resembles coproduct objects in a BCC, etc.
 
-Since both Simplicity and the CCC eDSL use the same types (unit, sums and products), we simply re-use these types instead of creating new types.
-
-The expressions in Simplicity can be modeled using the GADTs extension. Since Simplicity supports only unit, sum and product types, we create a type class `Types` to constrain the types. More importantly, this allows us to do some type level computation on these types, which is required later.
+The BCC eDSL supports unit, sum and product types. Since both Simplicity and the BCC eDSL use the same types (unit, sums and products), we simply re-use these types instead of creating new types. Expressions in Simplicity can be modeled using the GADTs extension. Since Simplicity allows only unit, sum and product types, we create a type class `Types` which is only implemented by these types. While another option is to constrain the types using `KindConstraints` extension, our choice enables us to mock some computations on types which we will be needing later. The definition looks like this:
 
 ```Haskell
 data Simpl i o where
@@ -30,23 +28,24 @@ data Simpl i o where
 
 ### Translating Simplicity to CCC
 
-The translation from Simplicity to CCC is simply a function `simpl2ccc`:
-```Haskell
-simpl2ccc :: Simpl i o -> Mph i o
-simpl2ccc Iden          = Id
-simpl2ccc (Comp f g)    = simpl2ccc g `O` simpl2ccc f 
-simpl2ccc Unit          = Terminal
-simpl2ccc (Injl f)      = Inj1CCC `O` (simpl2ccc f) 
-simpl2ccc (Injr f)      = Inj2CCC `O` (simpl2ccc f)
-simpl2ccc (Pair p q)    = Factor (simpl2ccc p) (simpl2ccc q)
-simpl2ccc (Take f)      = simpl2ccc f `O` Fst
-simpl2ccc (Drop f)      = simpl2ccc f `O` Snd
-simpl2ccc (Case p q)    = Copair
-                            (simpl2ccc p `O` prodFlip) 
-                            (simpl2ccc q `O` prodFlip) 
+
+The translation from Simplicity to BCC eDSL is simply a function `simpl2bcc`:
+```
+simpl2bcc :: Simpl i o -> Mph i o
+simpl2bcc Iden          = Id
+simpl2bcc (Comp f g)    = simpl2bcc g `O` simpl2bcc f 
+simpl2bcc Unit          = Terminal
+simpl2bcc (Injl f)      = Inj1CCC `O` (simpl2bcc f) 
+simpl2bcc (Injr f)      = Inj2CCC `O` (simpl2bcc f)
+simpl2bcc (Pair p q)    = Factor (simpl2bcc p) (simpl2bcc q)
+simpl2bcc (Take f)      = simpl2bcc f `O` Fst
+simpl2bcc (Drop f)      = simpl2bcc f `O` Snd
+simpl2bcc (Case p q)    = Copair
+                            (simpl2bcc p `O` prodFlip) 
+                            (simpl2bcc q `O` prodFlip) 
                         `O` prodFlip
 ```
-The last case is the most interesting one: the CCC eDSL has copair constructors of the form `A x (B + C)`, while simplicity has them in the form `(B + C) x A`. We achieve the conversion between them using `prodFlip` which constructs the isomorphism between symmetric products (`prodFlip` is defined as `Factor Snd Fst`).
+The last case is the most interesting one: the BCC eDSL has copair constructors of the form `A x (B + C)`, while the type of the simplicity `case` expressions is of the form `(B + C) x A`. Fortunately, it is a known and proveable fact - even within our eDSL - that products are symmetric wrt to isomorphism. Hence, we construct a morphism between them using `prodFlip` - which is defined as `Factor Snd Fst` (i.e., the isomorphism between symmetric products).
 
 ### Simplicity Bit Machine as a monadic eDSL
 
@@ -163,6 +162,37 @@ And then double negation of `False` equals `False`:
 ### What we did not do
 
 One of the original goals in the proposal was to tranlsate from the CCC eDSL to the instructions of the simplicity bit machine. This turned out to be harder than we expected. A generic translation from morphisms to instructions requires more work, and isn't straightforward adaptation of the operational semantics in [1]. This is because the morphisms are more general than simplicity expressions and the operational semantics in [1] is specifically tailored for simplicity expressions.
+
+To understand the problem, let us try to simply re-use the operational semantics of Simplicity for our BCC and see where we get stuck. Iden and composition are straightforward (given below) and can be adapted straight away. 
+
+```
+bcc2sbm :: Mph a b -> SBM (Maybe Bit)
+bcc2sbm (Iden :: Mph a b) = do
+        copy (bsize (undefined :: a))
+        return Nothing
+bcc2sbm ((g :: Mph a b) `O` (f :: Mph b c)) = do
+        newFrame $ bsize (undefined :: b)
+        bcc2sbm f
+        moveFrame
+        bcc2sbm g
+        dropFrame
+        return Nothing
+bcc2sbm (Terminal) = nop >> return Nothing
+bcc2sbm (Factor
+                (p :: Mph a b)
+                (q :: Mph a c)) = do
+        bcc2sbm p            
+        bcc2sbm q
+        return Nothing
+simpl2sbm (Fst :: Mph ab a)     = return Nothing
+simpl2sbm (Snd :: Mph ab b)     = ???
+```
+
+We define `Factor` eactly like `Pair` in Simpl2SBM. This entails that a product construction is stored as a series of continuous bits. For example, `A x B` would be stored as `[bits of A] ++ [bits of B]`. As shown in [1], to apply `take t`, we simply apply an expression `t` and it reads it from the beginning upto end of `A.` For `drop t` we can `fwd` the pointer by size of `A`, which places the pointer at beginning of `B` and then apply the expression `t`. ALSO, after the apllication of `t`. 
+
+Now `take t` get translated to 
+
+
 
 ### References
 [1] https://blockstream.com/simplicity.pdf
