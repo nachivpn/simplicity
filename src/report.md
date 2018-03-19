@@ -1,4 +1,4 @@
-## Simplicity to Closed Cartesian categories
+## Simplicity in Haskell
 
 ### Introduction: Simplicity & CCC
 
@@ -31,7 +31,7 @@ data Simpl i o where
 ### Translating Simplicity to CCC
 
 The translation from Simplicity to CCC is simply a function `simpl2ccc`:
-```
+```Haskell
 simpl2ccc :: Simpl i o -> Mph i o
 simpl2ccc Iden          = Id
 simpl2ccc (Comp f g)    = simpl2ccc g `O` simpl2ccc f 
@@ -54,7 +54,7 @@ The Simplicity bit machine has been implemented in the module `SBM`. The Simplic
 
 We model `readFrame` as a function which returns a `Maybe Bit` in the `SBM` monad. This enables us to model "interactive computation". That is, the value returned to `readFrame` is bound to a variable and decisions can be made based on the value of this variable. This is neatly captured in the monadic structure:
 
-```
+```Haskell
 mbit <- readFrame
     case mbit of
         (Just False) -> do ... 
@@ -65,7 +65,7 @@ mbit <- readFrame
 
 Simplicity expressions are evaluated on the simplicity bit machine by translating an expression to it's corresponding instructions. The original presentation of this in [1] uses type level functions such as `bitSize(A)`, where `A` is a type, and the return value is an integer. This is quite challenging to do when `A` is Haskell type! We implement such functions as a part of the `Types` class (and using the `ScopedTypeVariables` extension), which allows us to mock such functions in Haskell. For example, the `bitSize` function is implemented as follows:
 
-```
+```Haskell
 class Types a where
     bsize :: a -> Int
     ...
@@ -81,7 +81,7 @@ instance (Types a, Types b) => Types (a :+: b) where
 ```
 
 These are then used by the function `simpl2sbm` in `Simpl2SBM` module. The goal of this function is to translate a given simplicity expression to instructions of the simplicity bit machine.
-```
+```Haskell
 simpl2sbm :: Simpl a b -> SBM (Maybe Bit)
 simpl2sbm (Iden :: Simpl a b) = do
         copy (bsize (undefined :: a))
@@ -92,7 +92,7 @@ simpl2sbm (Iden :: Simpl a b) = do
 Now, let's try to evaluate some simplicity expressions. The following examples are available in the `Example` module.
 
 We start by defining three simplicity expressions:
-```
+```Haskell
 -- duplicates the input
 duplicate :: Simpl SBool (SBool :*: SBool)
 duplicate = Pair Iden Iden
@@ -108,7 +108,7 @@ not' = Comp (Pair Iden Unit) (Case (Injr Unit) (Injl Unit))
 
 and then we define a function to setup the input `False` in the bit machine:
 
-```
+```Haskell
 example se = do
     -- allocate bit for value
     newFrame 1
@@ -129,7 +129,7 @@ example se = do
 ```
 
 `iden` returns `False` as expected:
-```
+```Haskell
 *Example Control.Monad Control.Monad.ST> run $ example iden
     Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
     Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just False],1)]}
@@ -137,14 +137,14 @@ example se = do
 ```
 
 `duplicate` duplicates the input (as observed from the resulting write stack):
-```
+```Haskell
 *Example Control.Monad Control.Monad.ST> run $ example duplicate
 Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
 Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just False,Just False],2)]}
 ```
 
 `not` negates the input and gives us `True`:
-```
+```Haskell
 *Example Control.Monad Control.Monad.ST> run $ example not'
     Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
     Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just True],1)]}
@@ -153,7 +153,7 @@ Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Ju
 
 And then double negation of `False` equals `False`:
 
-```
+```Haskell
 *Example Control.Monad Control.Monad.ST> run $ example $ Comp not' not'
     Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
     Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just False],1)]}
