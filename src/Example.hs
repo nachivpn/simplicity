@@ -3,11 +3,13 @@
 module Example where
 
 
-import CCC
+import BCC
 import Simplicity
-import Simpl2SBM 
 import Debug.Trace
 import SBM
+import Simpl2SBM 
+import BCC2SBM
+import Simpl2BCC
 
 type SBool = T :+: T
 
@@ -20,7 +22,7 @@ iden = Iden
 not' :: Simpl SBool SBool
 not' = Comp (Pair Iden Unit) (Case (Injr Unit) (Injl Unit))
 
-example se = do
+example f se = do
     -- allocate bit for value
     newFrame 1
     -- write value
@@ -31,7 +33,7 @@ example se = do
     -- allocate new frame for result value
     newFrame 1
     -- translate (and "run") simplicity expression to SBM instructions
-    (simpl2sbm se)
+    f se
     debugS "Machine state after: "
     -- move result to read frame
     moveFrame
@@ -41,3 +43,8 @@ example se = do
 debug = debugS ""
 debugS str = get' >>= \s -> trace (str ++ show s) (return ())
 
+example1 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
+example1 = example simpl2sbm
+
+example2 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
+example2 = example (bcc2sbm . simpl2bcc)  

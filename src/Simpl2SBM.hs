@@ -2,10 +2,10 @@
 {-# LANGUAGE ScopedTypeVariables,TypeOperators #-}
 module Simpl2SBM where
 
-import CCC
+import BCC
 import SBM
 import Simplicity
-import Simpl2CCC
+import Simpl2BCC
 
 simpl2sbm :: Simpl a b -> SBM (Maybe Bit)
 simpl2sbm (Iden :: Simpl a b) = do
