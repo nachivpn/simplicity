@@ -26,7 +26,7 @@ data Simpl i o where
     Drop :: (Types a, Types b, Types c) => Simpl b c -> Simpl (a :*: b) c
 ```
 
-### Translating Simplicity to CCC
+### Translating Simplicity to BCC
 
 
 The translation from Simplicity to BCC eDSL is simply a function `simpl2bcc`:
@@ -35,8 +35,8 @@ simpl2bcc :: Simpl i o -> Mph i o
 simpl2bcc Iden          = Id
 simpl2bcc (Comp f g)    = simpl2bcc g `O` simpl2bcc f 
 simpl2bcc Unit          = Terminal
-simpl2bcc (Injl f)      = Inj1CCC `O` (simpl2bcc f) 
-simpl2bcc (Injr f)      = Inj2CCC `O` (simpl2bcc f)
+simpl2bcc (Injl f)      = Inj1 `O` (simpl2bcc f) 
+simpl2bcc (Injr f)      = Inj2 `O` (simpl2bcc f)
 simpl2bcc (Pair p q)    = Factor (simpl2bcc p) (simpl2bcc q)
 simpl2bcc (Take f)      = simpl2bcc f `O` Fst
 simpl2bcc (Drop f)      = simpl2bcc f `O` Snd
@@ -108,7 +108,7 @@ not' = Comp (Pair Iden Unit) (Case (Injr Unit) (Injl Unit))
 and then we define a function to setup the input `False` in the bit machine:
 
 ```Haskell
-example se = do
+example f se = do
     -- allocate bit for value
     newFrame 1
     -- write value
@@ -119,17 +119,19 @@ example se = do
     -- allocate new frame for result value
     newFrame 1
     -- translate (and "run") simplicity expression to SBM instructions
-    (simpl2sbm se)
+    f se
     debugS "Machine state after: "
     -- move result to read frame
     moveFrame
     -- read!
     readFrame
+
+example1 = example simpl2sbm
 ```
 
 `iden` returns `False` as expected:
 ```Haskell
-*Example Control.Monad Control.Monad.ST> run $ example iden
+*Example Control.Monad Control.Monad.ST> run $ example1 iden
     Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
     Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just False],1)]}
     Just False
@@ -137,14 +139,14 @@ example se = do
 
 `duplicate` duplicates the input (as observed from the resulting write stack):
 ```Haskell
-*Example Control.Monad Control.Monad.ST> run $ example duplicate
+*Example Control.Monad Control.Monad.ST> run $ example1 duplicate
 Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
 Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just False,Just False],2)]}
 ```
 
 `not` negates the input and gives us `True`:
 ```Haskell
-*Example Control.Monad Control.Monad.ST> run $ example not'
+*Example Control.Monad Control.Monad.ST> run $ example1 not'
     Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
     Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just True],1)]}
     Just True
@@ -159,39 +161,41 @@ And then double negation of `False` equals `False`:
     Just False
 ```
 
-### What we did not do
+### Translating from BCC to Simplicity bit machine
 
-One of the original goals in the proposal was to tranlsate from the CCC eDSL to the instructions of the simplicity bit machine. This turned out to be harder than we expected. A generic translation from morphisms to instructions requires more work, and isn't straightforward adaptation of the operational semantics in [1]. This is because the morphisms are more general than simplicity expressions and the operational semantics in [1] is specifically tailored for simplicity expressions.
+One of the original goals in the proposal was to translate from the BCC eDSL to the instructions of the simplicity bit machine. This is slightly tricky as morphisms in BCC are more general than Simplicity instructions. For example, `take t` in BCC is a morphism composition `(simpl2bcc t) O (Fst)` - where `simpl2bcc f` and `Fst` are in a sense simpler and more general. `(simpl2bcc t)`  and `(Fst)` are composed using `O` - and hence we are unable to take advantage of the fact that they compose to a `take` computation. We must translate `(simpl2bcc t)`, `Fst` and `O` individually - while ensuring that the semantics of `take t` is preserved.
 
-To understand the problem, let us try to simply re-use the operational semantics of Simplicity for our BCC and see where we get stuck. Iden and composition are straightforward (given below) and can be adapted straight away. 
+Fortunately, trying to write down the problem showed us the solution! The full implementation can be found in the module `BCC2SBM`. The operational semantics (or translation) looks very similar to the case of `Simpl2SBM`, except the cases of `Copair`, `Fst` and `Snd`. As the module is well commented, we skip a description here. We believe that translation preserves semantics, and show a few examples of this:
 
-```
-bcc2sbm :: Mph a b -> SBM (Maybe Bit)
-bcc2sbm (Iden :: Mph a b) = do
-        copy (bsize (undefined :: a))
-        return Nothing
-bcc2sbm ((g :: Mph a b) `O` (f :: Mph b c)) = do
-        newFrame $ bsize (undefined :: b)
-        bcc2sbm f
-        moveFrame
-        bcc2sbm g
-        dropFrame
-        return Nothing
-bcc2sbm (Terminal) = nop >> return Nothing
-bcc2sbm (Factor
-                (p :: Mph a b)
-                (q :: Mph a c)) = do
-        bcc2sbm p            
-        bcc2sbm q
-        return Nothing
-simpl2sbm (Fst :: Mph ab a)     = return Nothing
-simpl2sbm (Snd :: Mph ab b)     = ???
+We define `example2` using our `example` function from earlier:
+```Haskell
+example2 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
+example2 = example (bcc2sbm . simpl2bcc)  
 ```
 
-We define `Factor` eactly like `Pair` in Simpl2SBM. This entails that a product construction is stored as a series of continuous bits. For example, `A x B` would be stored as `[bits of A] ++ [bits of B]`. As shown in [1], to apply `take t`, we simply apply an expression `t` and it reads it from the beginning upto end of `A.` For `drop t` we can `fwd` the pointer by size of `A`, which places the pointer at beginning of `B` and then apply the expression `t`. ALSO, after the apllication of `t`. 
+As expected the values computed are the same as in the case of `example1`:
 
-Now `take t` get translated to 
+```Haskell
+*Example> run $ example2 $ iden
+Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
+Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just False],1)]}
+Just False
 
+*Example> run $ example2 $ duplicate
+Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
+Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just False,Just False],2)]}
+
+*Example> run $ example2 $ not'
+Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
+Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just True],1)]}
+Just True
+
+*Example> run $ example2 $ Comp not' not'
+Machine state before: Machine {readStack = [([Just False],0)], writeStack = []}
+Machine state after: Machine {readStack = [([Just False],0)], writeStack = [([Just False],1)]}
+Just False
+```
+This gives us an indication that the translation to SBM via BCC might be correct, but ofcourse this needs to be formally proved. We don't do this as it is outside the scope of this project.
 
 
 ### References
