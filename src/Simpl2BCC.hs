@@ -6,7 +6,7 @@ module Simpl2BCC where
 import Simplicity
 import BCC
 
-simpl2bcc :: Simpl i o -> Mph i o
+simpl2bcc :: Simpl i o -> Mph Types i o
 simpl2bcc Iden          = Id
 simpl2bcc (Comp f g)    = simpl2bcc g `O` simpl2bcc f 
 simpl2bcc Unit          = Terminal
