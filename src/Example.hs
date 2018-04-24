@@ -13,14 +13,14 @@ import Simpl2BCC
 
 type SBool = T :+: T
 
-duplicate :: Simpl SBool (SBool :*: SBool)
-duplicate = Pair Iden Iden
+duplicate = Pair iden iden
 
-iden :: Simpl SBool SBool
+iden :: Simpl SBool SBool MphId
 iden = Iden
 
-not' :: Simpl SBool SBool
-not' = Comp (Pair Iden Unit) (Case (Injr Unit) (Injl Unit))
+l = Lam $ Pair (Take iden) (Drop iden)
+
+not' = Comp (Pair iden Unit) (Case (Injr Unit) (Injl Unit))
 
 example f se = do
     -- allocate bit for value
@@ -43,8 +43,8 @@ example f se = do
 debug = debugS ""
 debugS str = get' >>= \s -> trace (str ++ show s) (return ())
 
-example1 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
+example1 :: (Types a, Types b) => Simpl a b n -> SBM (Maybe Bit)
 example1 = example simpl2sbm
 
-example2 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
+example2 :: (Types a, Types b) => Simpl a b n -> SBM (Maybe Bit)
 example2 = example (bcc2sbm . simpl2bcc)  
