@@ -19,3 +19,5 @@ simpl2bcc (Case p q)    = Copair
                             (simpl2bcc p `O` prodFlip) 
                             (simpl2bcc q `O` prodFlip) 
                         `O` prodFlip
+simpl2bcc (Lam f)       = Curry (simpl2bcc f)
+simpl2bcc (App f x)     = Eval `O` (Factor (simpl2bcc f) (simpl2bcc x))

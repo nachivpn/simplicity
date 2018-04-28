@@ -26,6 +26,10 @@ data Mph obj a b where
     Inj2      :: (obj a, obj b, obj (a :+: b)) => Mph obj b (a :+: b)
     Copair    :: (obj a, obj b, obj c, obj e, obj (e :*: a), obj (e :*: b), obj (a :+: b), obj (e :*: (a :+: b))) 
               => Mph obj (e :*: a) c -> Mph obj (e :*: b) c -> Mph obj (e :*: (a :+: b)) c
+    Curry     :: (o a, o b, o r, o (r :*: a), o (a :=>: b))
+              => Mph o (r :*: a) b -> Mph o r (a :=>: b)
+    Eval      :: (o a, o b, o (a :=>: b), o ((a :=>: b) :*: a)) 
+              => Mph o ((a :=>: b) :*: a) b
 
 -- CCC to String
 toString :: (Mph obj a b) -> String
