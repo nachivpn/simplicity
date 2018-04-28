@@ -7,6 +7,7 @@ module BCC where
 data T
 data a :*: b   -- Products
 data a :+: b   -- Coproducts
+data a :=>: b  -- Exponentials
 
 {-- Morphisms --}
 data Mph obj a b where
