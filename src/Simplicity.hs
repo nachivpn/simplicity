@@ -18,8 +18,8 @@ data Simpl i o where
     Pair :: (Types a, Types b, Types c) => Simpl a b -> Simpl a c -> Simpl a (b :*: c)
     Take :: (Types a, Types b, Types c) => Simpl a c -> Simpl (a :*: b) c
     Drop :: (Types a, Types b, Types c) => Simpl b c -> Simpl (a :*: b) c
-    Lam  :: (Types a, Types b, Types c) => Simpl (a :*: b) c -> Simpl a (b :=>: c)
-    App  :: (Types a, Types b, Types c) => Simpl a (b :=>: c) -> Simpl a b -> Simpl a c
+    Lam  :: (Types r, Types a, Types b) => Simpl (r :*: a) b -> Simpl r (a :=>: b)
+    App  :: (Types r, Types a, Types b) => Simpl r (a :=>: b) -> Simpl r a -> Simpl r b
 
 type family Hask i :: * where
   Hask T          = () 
@@ -67,6 +67,8 @@ instance (Types a, Types b) => Types (a :*: b) where
       a = bsize (undefined :: a)
       b = bsize (undefined :: b)
       in a + b
+
+instance (Types a, Types b) => Types (a :=>: b) where
 
 instance (Types a, Types b) => ProductTypes (a :*: b) where
   bsizf _ = bsize (undefined :: a)
