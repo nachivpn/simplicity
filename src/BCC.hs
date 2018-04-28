@@ -17,7 +17,7 @@ data Mph obj a b where
     Factor    ::  (obj a, obj b1, obj b2, obj (b1 :*: b2)) => Mph obj a b1 -> Mph obj a b2 -> Mph obj a (b1 :*: b2)
     -- Pairs proyections
     Fst       :: (obj a, obj b, obj (a :*: b)) => Mph obj (a :*: b) a
-    Snd       :: (obj b, obj b, obj (a :*: b)) => Mph obj (a :*: b) b
+    Snd       :: (obj a, obj b, obj (a :*: b)) => Mph obj (a :*: b) b
     -- Terminal
     Terminal  :: Mph obj a T
     -- Coproducts
@@ -42,28 +42,38 @@ toString (Copair f g)   = "[" ++ toString f ++ ", " ++ toString g ++ "]"
 prodFlip :: (obj a, obj e, obj (a :*: e), obj (e :*: a)) => Mph obj (a :*: e) (e :*: a)
 prodFlip = Factor Snd Fst
 
-
-
 -- |Types is a type class which is implemnted only by Simplicity types
 class Types a where
   bsize :: a -> Int
+  
+class SumTypes a where
   padl  :: a -> Int
   padr  :: a -> Int
+
+class ProductTypes a where
   bsizf :: a -> Int
   bsizs :: a -> Int
-  
+
 instance Types T where
   bsize _ = 0
-  padl  _ = undefined
-  padr _  = undefined
-  bsizf _ = undefined
-  bsizs _ = undefined
 
 instance (Types a, Types b) => Types (a :+: b) where
   bsize _ = let 
               a = bsize (undefined :: a)
               b = bsize (undefined :: b) 
           in 1 + max a b
+
+instance (Types a, Types b) => Types (a :*: b) where
+  bsize _ = let 
+      a = bsize (undefined :: a)
+      b = bsize (undefined :: b)
+      in a + b
+
+instance (Types a, Types b) => ProductTypes (a :*: b) where
+  bsizf _ = bsize (undefined :: a)
+  bsizs _ = bsize (undefined :: b)
+
+instance (Types a, Types b) => SumTypes (a :+: b) where
   padl _ = let
               a = bsize (undefined :: a)
               b = bsize (undefined :: b) 
@@ -72,15 +82,3 @@ instance (Types a, Types b) => Types (a :+: b) where
               a = bsize (undefined :: a)
               b = bsize (undefined :: b) 
           in (max a b) - b
-  bsizf _ = undefined
-  bsizs _ = undefined
-
-instance (Types a, Types b) => Types (a :*: b) where
-  bsize _ = let 
-      a = bsize (undefined :: a)
-      b = bsize (undefined :: b)
-      in a + b
-  padl _ = padl (undefined :: a)
-  padr _ = padr (undefined :: a)
-  bsizf _ = bsize (undefined :: a)
-  bsizs _ = bsize (undefined :: b)

@@ -6,28 +6,24 @@ import BCC
 import SBM
 import Simplicity
 
-bcc2sbm :: Mph Types a b -> SBM (Maybe Bit)
+bcc2sbm :: Mph Types a b -> SBM ()
 bcc2sbm (Id :: Mph Types a b) = do
         copy (bsize (undefined :: a))
-        return Nothing
 bcc2sbm ((g :: Mph Types b c) `O` (f :: Mph Types a b)) = do
         newFrame $ bsize (undefined :: b)
         bcc2sbm f
         moveFrame
         bcc2sbm g
         dropFrame
-        return Nothing
-bcc2sbm (Terminal)      = nop >> return Nothing
+bcc2sbm (Terminal)      = nop
 bcc2sbm (Inj1 :: Mph Types a ab)          = do
         write False
         skip $ padl (undefined :: ab)
         copy $ bsize (undefined :: a)
-        return Nothing
 bcc2sbm (Inj2 :: Mph Types b ab)          = do
         write True
         skip $ padl (undefined :: ab)
         copy $ bsize (undefined :: b)
-        return Nothing
 bcc2sbm (Copair -- :: Mph (e :*: (a :+: b)) c
             (p :: Mph Types (e :*: a) c)
             (q :: Mph Types (e :*: b) c)) = do
@@ -56,18 +52,14 @@ bcc2sbm (Copair -- :: Mph (e :*: (a :+: b)) c
                 bcc2sbm q                       -- run q (as read stack has value of type e :*: b)
                 dropFrame                       -- drop frame containing e :*: b
                 bwd x                           -- bwd to beginning
-        return Nothing
 bcc2sbm (Factor -- :: Mph Types a (b :*: c)
                 (p :: Mph Types a b)
                 (q :: Mph Types a c)) = do
         bcc2sbm p
         bcc2sbm q
-        return Nothing
 bcc2sbm (Fst :: Mph Types ab a)     = do
     copy (bsize (undefined :: a))
-    return Nothing
 bcc2sbm (Snd :: Mph Types ab b)     = do
     fwd (bsizf (undefined :: ab))
     copy (bsize (undefined :: b))
     bwd (bsizf (undefined :: ab))
-    return Nothing
