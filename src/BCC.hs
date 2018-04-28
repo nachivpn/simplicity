@@ -19,7 +19,7 @@ data Mph obj a b where
     Fst       :: (obj a, obj b, obj (a :*: b)) => Mph obj (a :*: b) a
     Snd       :: (obj a, obj b, obj (a :*: b)) => Mph obj (a :*: b) b
     -- Terminal
-    Terminal  :: Mph obj a T
+    Terminal  :: obj a => Mph obj a T
     -- Coproducts
     Inj1      :: (obj a, obj b, obj (a :+: b)) => Mph obj a (a :+: b)
     Inj2      :: (obj a, obj b, obj (a :+: b)) => Mph obj b (a :+: b)
