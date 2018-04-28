@@ -4,7 +4,7 @@
 module Simplicity where
 
 import Data.Either
-import BCC
+import BCC ((:*:),(:+:),T)
 
 data Simpl i o where
     Iden :: Types a => Simpl a a
@@ -17,3 +17,43 @@ data Simpl i o where
     Take :: (Types a, Types b, Types c) => Simpl a c -> Simpl (a :*: b) c
     Drop :: (Types a, Types b, Types c) => Simpl b c -> Simpl (a :*: b) c
 
+-- |Types is a type class which is implemnted only by Simplicity types
+class Types a where
+  bsize :: a -> Int
+  
+class SumTypes a where
+  padl  :: a -> Int
+  padr  :: a -> Int
+
+class ProductTypes a where
+  bsizf :: a -> Int
+  bsizs :: a -> Int
+
+instance Types T where
+  bsize _ = 0
+
+instance (Types a, Types b) => Types (a :+: b) where
+  bsize _ = let 
+              a = bsize (undefined :: a)
+              b = bsize (undefined :: b) 
+          in 1 + max a b
+
+instance (Types a, Types b) => Types (a :*: b) where
+  bsize _ = let 
+      a = bsize (undefined :: a)
+      b = bsize (undefined :: b)
+      in a + b
+
+instance (Types a, Types b) => ProductTypes (a :*: b) where
+  bsizf _ = bsize (undefined :: a)
+  bsizs _ = bsize (undefined :: b)
+
+instance (Types a, Types b) => SumTypes (a :+: b) where
+  padl _ = let
+              a = bsize (undefined :: a)
+              b = bsize (undefined :: b) 
+          in (max a b) - a
+  padr _ = let
+              a = bsize (undefined :: a)
+              b = bsize (undefined :: b) 
+          in (max a b) - b
