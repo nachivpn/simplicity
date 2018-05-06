@@ -6,7 +6,7 @@
 module Simplicity where
 
 import Data.Either
-import BCC ((:*:),(:+:),(:=>:),T)
+import BCC
 
 data Simpl i o where
     Iden :: Types a => Simpl a a
@@ -20,26 +20,6 @@ data Simpl i o where
     Drop :: (Types a, Types b, Types c) => Simpl b c -> Simpl (a :*: b) c
     Lam  :: (Types r, Types a, Types b) => Simpl (r :*: a) b -> Simpl r (a :=>: b)
     App  :: (Types r, Types a, Types b) => Simpl r (a :=>: b) -> Simpl r a -> Simpl r b
-
-type family Hask i :: * where
-  Hask T          = () 
-  Hask (b :*: c)  = (Hask b, Hask c)
-  Hask (b :+: c)  = Either (Hask b) (Hask c)
-  Hask (b :=>: c) = (Hask b) -> (Hask c)
-
--- denotational semantics
-ds :: Simpl i o -> (Hask i -> Hask o)
-ds Iden       = id
-ds (Comp s t) = ds t . ds s
-ds Unit       = \_ -> ()
-ds (Injl t)   = Left . ds t
-ds (Injr t)   = Right . ds t
-ds (Pair s t) = \x -> (ds s x, ds t x)
-ds (Take t)   = ds t . fst
-ds (Drop t)   = ds t . snd
-ds (Lam f)    = curry (ds f)
-ds (App f g)  = \a -> let f' = ds f; g' = ds g; b = g' a in f' a b
-ds (Case s t) = \x -> case x of (Left a,c) -> ds s (a,c); (Right a,c) -> ds t (a,c); 
 
 -- |Types is a type class which is implemnted only by Simplicity types
 class Types a where
@@ -69,6 +49,7 @@ instance (Types a, Types b) => Types (a :*: b) where
       in a + b
 
 instance (Types a, Types b) => Types (a :=>: b) where
+  bsize _ = 0
 
 instance (Types a, Types b) => ProductTypes (a :*: b) where
   bsizf _ = bsize (undefined :: a)

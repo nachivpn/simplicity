@@ -48,7 +48,9 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules: BCC, Example, SBM, Simpl2BCC, Simplicity, Simpl2SBM, BCC2SBM
+  exposed-modules: BCC, Example, SBM, Simpl2BCC
+                  , Simplicity, Simpl2SBM, BCC2SBM
+                  , Denotational
   
   -- Modules included in this library but not exported.
   -- other-modules:       
@@ -59,7 +61,7 @@ library
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.10 && <4.11
                       , mtl
-  
+ 
   -- Directories containing source files.
   hs-source-dirs:      src
   

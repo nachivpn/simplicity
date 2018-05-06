@@ -10,6 +10,7 @@ import SBM
 import Simpl2SBM 
 import BCC2SBM
 import Simpl2BCC
+import Denotational
 
 type SBool = T :+: T
 
@@ -53,10 +54,25 @@ example f se = do
     readFrame
 
 debug = debugS ""
-debugS str = get' >>= \s -> trace (str ++ show s) (return ())
+debugS str = get' >>= \s -> trace (str ++ show (readStack s) ++ show (writeStack s)) (return ())
 
-example1 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
+example1 :: (Types a, Types b) => Simpl a b -> SBM Bit
 example1 = example simpl2sbm
 
-example2 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
+example2 :: (Types a, Types b) => Simpl a b -> SBM Bit
 example2 = example (bcc2sbm . simpl2bcc)  
+
+true :: Types a => Simpl a SBool
+true = Injr Unit
+
+false :: Types a => Simpl a SBool
+false = Injl Unit
+
+idapp :: Simpl SBool SBool
+idapp = App idenf true
+
+constapp :: Simpl SBool SBool
+constapp = App (App constf true) false
+
+flipapp :: Simpl SBool SBool
+flipapp = flipf constf true false

@@ -42,6 +42,8 @@ toString Terminal       = "Terminal"
 toString Inj1           = "Inj1"
 toString Inj2           = "Inj2"
 toString (Copair f g)   = "[" ++ toString f ++ ", " ++ toString g ++ "]"
+toString (Curry l)      = "(Curry " ++ toString l ++ ")"
+toString Eval           = "Eval"
 
 -- Products are symmetric wrt isomorphism
 prodFlip :: (obj a, obj e, obj (a :*: e), obj (e :*: a)) => Mph obj (a :*: e) (e :*: a)

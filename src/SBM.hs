@@ -3,7 +3,7 @@ module SBM where
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Except
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromJust)
 
 -- |A bit of data is simply a boolean
 type Bit = Bool
@@ -17,8 +17,9 @@ type Stack = [Frame]
 -- |A machine consists of two stacks, one for reading and the other for writing
 data Machine = Machine {
     readStack   :: Stack,
-    writeStack  :: Stack }
-    deriving Show
+    writeStack  :: Stack,
+    closure     :: [(SBM (),[Bit])]
+}
 
 -- -- |Stateful Bit Machine (SBM) monad
 type SBM = State Machine
@@ -27,10 +28,10 @@ get' :: SBM Machine
 get' = get
 
 -- |run the instructions and return the read bit
-run :: SBM (Maybe Bit) -> Maybe Bit
+run :: SBM Bit -> Bit
 run m = evalState m startMachine
     where
-    startMachine = Machine {readStack = [],writeStack = []}
+    startMachine = Machine {readStack = [],writeStack = [],closure = []}
 
 nop :: SBM ()
 nop = return ()
@@ -95,8 +96,14 @@ dropFrame = do
     trs <- tail <$> readStack <$> get
     modify (\s -> s {readStack  = trs})
 
-readFrame :: SBM (Maybe Bit)
-readFrame = uncurry (!!) <$> fst <$> activeFrame readStack
+readFrame :: SBM Bit
+readFrame = fromJust <$> uncurry (!!) <$> fst <$> activeFrame readStack
+
+readMany :: Int -> SBM [Bit]
+readMany n = do
+    bits <- replicateM n (readFrame >>= \x -> fwd 1 >> return x)
+    bwd n
+    return bits
 
 -- |Returns the active frame (topmost) from a stack 
 activeFrame :: 
@@ -104,3 +111,13 @@ activeFrame ::
     -> SBM (Frame,[Frame]) -- ^ returns active frame and remaining stack
 activeFrame f = (\stack -> (head stack, tail stack)) . f <$> get
 
+pushClosure :: SBM () -> [Bit] -> SBM ()
+pushClosure f r = do
+    c <- closure <$> get
+    modify (\s -> s {closure = (f,r) : c})
+
+popClosure :: SBM ((SBM (),[Bit]))
+popClosure = do
+    (c:cs) <- closure <$> get
+    modify (\s -> s {closure = cs})
+    return c
