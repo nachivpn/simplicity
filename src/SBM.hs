@@ -14,11 +14,14 @@ type Frame = ([Maybe Bit],Int)
 -- |A "Stack" is a stack (or list) of frames
 type Stack = [Frame]
 
+-- |A Closure of instructions and a value
+type Closure = (SBM (),[Bit])
+
 -- |A machine consists of two stacks, one for reading and the other for writing
 data Machine = Machine {
     readStack   :: Stack,
     writeStack  :: Stack,
-    closure     :: [(SBM (),[Bit])]
+    closure     :: Maybe Closure
 }
 
 -- -- |Stateful Bit Machine (SBM) monad
@@ -31,7 +34,7 @@ get' = get
 run :: SBM Bit -> Bit
 run m = evalState m startMachine
     where
-    startMachine = Machine {readStack = [],writeStack = [],closure = []}
+    startMachine = Machine {readStack = [],writeStack = [],closure = Nothing}
 
 nop :: SBM ()
 nop = return ()
@@ -111,13 +114,11 @@ activeFrame ::
     -> SBM (Frame,[Frame]) -- ^ returns active frame and remaining stack
 activeFrame f = (\stack -> (head stack, tail stack)) . f <$> get
 
-pushClosure :: SBM () -> [Bit] -> SBM ()
-pushClosure f r = do
-    c <- closure <$> get
-    modify (\s -> s {closure = (f,r) : c})
+putClosure :: SBM () -> [Bit] -> SBM ()
+putClosure f r = modify (\s -> s {closure = Just (f,r)})
 
-popClosure :: SBM ((SBM (),[Bit]))
-popClosure = do
-    (c:cs) <- closure <$> get
-    modify (\s -> s {closure = cs})
+takeClosure :: SBM ((SBM (),[Bit]))
+takeClosure = do
+    (Just c) <- closure <$> get
+    modify (\s -> s {closure = Nothing})
     return c

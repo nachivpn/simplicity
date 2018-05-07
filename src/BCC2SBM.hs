@@ -67,13 +67,13 @@ bcc2sbm (Curry -- :: Mph o r (a :=>: b)
             (f ::  Mph Types (r :*: a) b)) = do 
     let rSize = bsize (undefined :: r)
     r <- readMany rSize
-    pushClosure (bcc2sbm f) r
+    putClosure (bcc2sbm f) r
 bcc2sbm (Eval :: Mph Types a2bna b) = do 
     let a2bsize = bsizf (undefined :: a2bna)
         aSize   = bsizs (undefined :: a2bna)
     fwd a2bsize
     a <- readMany aSize
-    (f,r) <- popClosure
+    (f,r) <- takeClosure
     let rnaSize = length r + aSize
     newFrame rnaSize
     mapM_ write r
