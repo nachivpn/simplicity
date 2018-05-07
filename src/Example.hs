@@ -35,6 +35,10 @@ flipf :: (Types r, Types a, Types b, Types c) =>
     Simpl r (a :=>: (b :=>: c)) -> Simpl r b -> Simpl r a -> Simpl r c
 flipf f b a = App (App f a) b 
 
+comp :: (Types r, Types a, Types b, Types c) => 
+    Simpl r (a :=>: b) -> Simpl r (b :=>: c) -> Simpl r (a :=>: c)
+comp f g = Lam (App (Take g) (App (Take f) (Drop Iden)))
+
 example f se = do
     -- allocate bit for value
     newFrame 1
