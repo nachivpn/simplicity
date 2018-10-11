@@ -1,7 +1,11 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables,ConstraintKinds #-}
-module BCC where
+{-# LANGUAGE UndecidableSuperClasses,TypeFamilies,AllowAmbiguousTypes #-}
+module Mph where
+
+import GHC.Exts (Constraint)
+import Control.Category.Constrained
 
 {-- Objects --}
 data T
@@ -45,4 +49,46 @@ toString (Copair f g)   = "[" ++ toString f ++ ", " ++ toString g ++ "]"
 
 -- Products are symmetric wrt isomorphism
 prodFlip :: (obj a, obj e, obj (a :*: e), obj (e :*: a)) => Mph obj (a :*: e) (e :*: a)
-prodFlip = Factor Snd Fst
+prodFlip = Factor Snd Fst 
+
+
+{- Language of ABCCs and BCCs (in the style of constrained categories by Eliott)-}
+
+type PairObj m a b = (Category m, Object m a, Object m b, Object m (Pair m a b))
+
+class (Category m) => Cart m where
+    type Pair m a b :: *
+    type Terminal m :: *
+    it  :: (u ~ Terminal m, Object m u, Object m a) => m a u
+    fst' :: (PairObj m a b) => m (Pair m a b) a
+    snd' :: (PairObj m a b) => m (Pair m a b) b
+    (.*.)   :: (Object m a, PairObj m b1 b2) => m a b1 -> m a b2 -> m a (Pair m b1 b2)
+
+type ExpObj m b c = (Category m, Object m b, Object m c, Object m (Exp m b c))
+
+class Cart m => Closed m where
+    type Exp m b a :: *
+    eval      :: (ExpObj m b c, PairObj m (Exp m b c) b) => m (Pair m (Exp m b c) b) c
+    curry'     :: (PairObj m a b, Object m c, ExpObj m b c) => m (Pair m a b) c -> m a (Exp m b c)
+
+type CoPairObj m a b = (Category m, Object m a, Object m b, Object m (CoPair m a b))
+
+-- Almost BiCartesian category
+class (Category m) => ABiCart m where
+    type CoPair m a b :: *
+    inl    :: CoPairObj m a b => m a (CoPair m a b)
+    inr    :: CoPairObj m a b => m b (CoPair m a b)
+    (.+.)     :: (Object m z, CoPairObj m a b) => m a z -> m b z -> m (CoPair m a b) z
+
+-- BiCartesian category (with initial object)
+class (ABiCart m) => BiCart m where
+    type Initial m :: *
+    ge  :: (o ~ Initial m, Object m u, Object m a) => m o a
+
+-- Almost BiCartesian Closed category
+class (Cart m, ABiCart m, Closed m) => ABCC m where
+    -- nothing to do!
+
+-- BiCartesian Closed category
+class (Cart m, BiCart m, Closed m) => BCC m where
+    -- nothing to do!

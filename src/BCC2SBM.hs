@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables,TypeOperators #-}
 module BCC2SBM where
 
-import BCC
+import Mph
 import SBM
 import Simplicity
 

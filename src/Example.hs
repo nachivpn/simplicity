@@ -3,7 +3,7 @@
 module Example where
 
 
-import BCC
+import Mph
 import Simplicity
 import Debug.Trace
 import SBM

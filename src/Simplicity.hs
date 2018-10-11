@@ -1,12 +1,13 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables#-}
-{-# LANGUAGE TypeFamilies#-}
+{-# LANGUAGE TypeFamilies,FlexibleInstances,TypeApplications#-}
 
 module Simplicity where
 
 import Data.Either
-import BCC ((:*:),(:+:),(:=>:),T)
+import Mph
+import qualified Control.Category.Constrained as ConCat
 
 data Simpl i o where
     Iden :: Types a => Simpl a a
@@ -83,3 +84,30 @@ instance (Types a, Types b) => SumTypes (a :+: b) where
               a = bsize (undefined :: a)
               b = bsize (undefined :: b) 
           in (max a b) - b
+
+instance ConCat.Category Simpl where
+    type Object Simpl o = Types o
+    id = Iden
+    (.) = flip Comp
+
+instance Cart Simpl where
+    type Pair Simpl a b = a :*: b
+    type Terminal Simpl = T
+    it = Unit
+    fst' = (Take Iden)
+    snd' = (Drop Iden)
+    (.*.) = Pair
+
+instance Closed Simpl where
+    type Exp Simpl a b = (a :=>: b)
+    curry' = Lam
+    eval  = App (Take Iden) (Drop Iden)
+
+instance ABiCart Simpl where
+    type CoPair Simpl a b = (a :+: b)
+    inl = Injl Iden
+    inr = Injr Iden
+    f .+. g = Comp (Pair Iden Unit) (Case (Take f) (Take g))
+
+instance ABCC Simpl where
+  -- nothing to do!

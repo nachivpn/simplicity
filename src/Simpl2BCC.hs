@@ -4,7 +4,7 @@
 
 module Simpl2BCC where
 import Simplicity
-import BCC
+import Mph
 
 simpl2bcc :: Simpl i o -> Mph Types i o
 simpl2bcc Iden          = Id
