@@ -111,3 +111,12 @@ instance ABiCart Simpl where
 
 instance ABCC Simpl where
   -- nothing to do!
+
+-- partial as it stands
+betared :: Simpl i o -> Simpl i o
+betared (App (Lam f) x) = Comp (Pair Iden x) f
+betared (Comp (Pair x y) (Take f)) = Comp x f
+betared (Comp (Pair x y) (Drop f)) = Comp y f
+betared (Comp f Iden) = f
+betared (Comp Iden f) = f
+betared (Comp f Unit) = Unit
