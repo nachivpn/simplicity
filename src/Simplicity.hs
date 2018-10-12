@@ -112,7 +112,6 @@ instance ABiCart Simpl where
 instance ABCC Simpl where
   -- nothing to do!
 
--- partial as it stands
 betared :: Simpl i o -> Simpl i o
 betared (App (Lam f) x) = Comp (Pair Iden x) f
 betared (Comp (Pair x y) (Take f)) = Comp x f
@@ -120,3 +119,10 @@ betared (Comp (Pair x y) (Drop f)) = Comp y f
 betared (Comp f Iden) = f
 betared (Comp Iden f) = f
 betared (Comp f Unit) = Unit
+-- TODO
+-- In the following code, g can be though of as a subtituion which assigns values
+-- to free variables in p and q. So, the order of building substitution (as Pair f g)
+-- is flipped (instead of Pair g f---as usual) for the following cases.
+-- Wouldn't this be a problem when a function body indexes using de-bruijn? Prove/disprove!
+betared (Comp (Pair (Injl f) g) (Case p _)) = Comp (Pair f g) p
+betared (Comp (Pair (Injr f) g) (Case _ q)) = Comp (Pair f g) q
