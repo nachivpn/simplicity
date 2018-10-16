@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables,TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables,TypeOperators#-}
 module Example where
 
 
@@ -10,6 +10,8 @@ import SBM
 import Simpl2SBM 
 import BCC2SBM
 import Simpl2BCC
+import GHC.TypeLits
+import Data.Proxy
 
 type SBool = T :+: T
 
@@ -59,4 +61,41 @@ example1 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
 example1 = example simpl2sbm
 
 example2 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
-example2 = example (bcc2sbm . simpl2bcc)  
+example2 = example (bcc2sbm . simpl2bcc)
+
+---------------------------------------------------
+-- Experiments with environment
+---------------------------------------------------
+
+fl :: (Types a, Types b) => Simpl (a :*: b) (b :*: a)
+fl = Pair (Drop Iden) (Take Iden)
+
+select :: (Types a) => Simpl T (a :=>: (a :=>: (SBool :=>: a)))
+select =
+  (Lam
+    (Lam
+      (Lam
+        (Comp
+         fl
+         (Case
+           (Drop (Take (Drop Iden)))
+           (Drop (Drop Iden))
+         )))))
+
+z f = Drop f
+s f = Take f
+
+case' :: (Types a, Types b, Types r, Types d) =>
+  Simpl (r :*: a) d -> Simpl (r :*: b) d -> Simpl (r :*: (a :+: b)) d
+case'  p q = Comp fl (Case (Comp fl p) (Comp fl q)) 
+  
+select' :: (Types a, Types r) => Simpl r (a :=>: (a :=>: (SBool :=>: a)))
+select' =
+  (Lam
+    (Lam
+      (Lam
+        (case'
+          (s . s $ z Iden)
+          (s $ z Iden)
+        ))))
+
