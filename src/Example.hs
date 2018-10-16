@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables,TypeOperators#-}
+{-# LANGUAGE ScopedTypeVariables#-}
+{-# LANGUAGE TypeOperators#-}
 module Example where
 
 
