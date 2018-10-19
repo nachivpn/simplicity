@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables#-}
 {-# LANGUAGE TypeOperators#-}
+{-# LANGUAGE RankNTypes#-}
 module Example where
 
 
@@ -23,7 +24,7 @@ iden :: Simpl SBool SBool
 iden = Iden
 
 not' :: Simpl SBool SBool
-not' = Comp (Pair Iden Unit) (Case (Injr Unit) (Injl Unit))
+not' = Comp (Pair Unit Iden) (Case (Injr Unit) (Injl Unit))
 
 idenf :: (Types r, Types a) => 
     Simpl r (a :=>: a)
@@ -64,39 +65,75 @@ example1 = example simpl2sbm
 example2 :: (Types a, Types b) => Simpl a b -> SBM (Maybe Bit)
 example2 = example (bcc2sbm . simpl2bcc)
 
----------------------------------------------------
--- Experiments with environment
----------------------------------------------------
-
-fl :: (Types a, Types b) => Simpl (a :*: b) (b :*: a)
-fl = Pair (Drop Iden) (Take Iden)
-
-select :: (Types a) => Simpl T (a :=>: (a :=>: (SBool :=>: a)))
-select =
-  (Lam
-    (Lam
-      (Lam
-        (Comp
-         fl
-         (Case
-           (Drop (Take (Drop Iden)))
-           (Drop (Drop Iden))
-         )))))
-
 z f = Drop f
 s f = Take f
 
-case' :: (Types a, Types b, Types r, Types d) =>
-  Simpl (r :*: a) d -> Simpl (r :*: b) d -> Simpl (r :*: (a :+: b)) d
-case'  p q = Comp fl (Case (Comp fl p) (Comp fl q)) 
-  
+
 select' :: (Types a, Types r) => Simpl r (a :=>: (a :=>: (SBool :=>: a)))
 select' =
   (Lam
     (Lam
       (Lam
-        (case'
+        (Case
           (s . s $ z Iden)
           (s $ z Iden)
         ))))
 
+true :: Types a => Simpl a SBool
+true = Injr Unit
+
+false :: Types a => Simpl a SBool
+false = Injl Unit
+
+idapp :: Simpl SBool SBool
+idapp = App idenf true
+
+constapp :: Simpl SBool SBool
+constapp = App (App constf true) false
+
+flipapp :: Simpl SBool SBool
+flipapp = flipf constf true false
+
+sapp :: Simpl SBool SBool
+sapp = App (App (App select' (true)) false) true
+
+
+selapp :: Simpl SBool T
+selapp = App (App sel true) true
+
+sel :: (Types r) => Simpl r (SBool :=>: (SBool :=>: T))
+sel =
+  Lam
+   (Lam
+     (Case
+      (Unit)
+      (Unit)))
+
+type SNat = forall a. Types a => Simpl (a :=>: a) (a :=>: a)
+
+zero :: SNat
+zero = Lam (Drop Iden)
+
+one :: SNat
+one = Lam (App (Take Iden) (Drop Iden))
+
+two :: SNat
+two = Lam $ App (Take Iden) (App (Take Iden) (Drop Iden))
+
+succ' :: SNat -> SNat
+succ' n = Lam $ App (App (toLam n) s) (App s z)
+    where
+        s = Take Iden
+        z = Drop Iden
+
+toLam :: (Types a, Types b, Types r) => Simpl a b -> Simpl r (a :=>: b)
+toLam s = Lam (Drop s)
+
+loop :: forall a. Types a => Simpl a a -> SNat -> Simpl a a
+loop f n = App (App (toLam n) (toLam f)) Iden
+
+x :: Simpl SBool SBool
+x = Comp true (loop not' one)
+
+t :: Simpl SBool SBool 
+t = (Comp (Pair Unit Unit) (Injl Unit))

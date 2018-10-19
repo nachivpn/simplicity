@@ -16,8 +16,7 @@ simpl2bcc (Pair p q)    = Factor (simpl2bcc p) (simpl2bcc q)
 simpl2bcc (Take f)      = simpl2bcc f `O` Fst
 simpl2bcc (Drop f)      = simpl2bcc f `O` Snd
 simpl2bcc (Case p q)    = Copair
-                            (simpl2bcc p `O` prodFlip) 
-                            (simpl2bcc q `O` prodFlip) 
-                        `O` prodFlip
+                            (simpl2bcc p) 
+                            (simpl2bcc q) 
 simpl2bcc (Lam f)       = Curry (simpl2bcc f)
 simpl2bcc (App f x)     = Eval `O` (Factor (simpl2bcc f) (simpl2bcc x))
