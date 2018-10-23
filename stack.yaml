@@ -45,6 +45,11 @@ extra-deps: [
   , semigroups-0.18.5
   , tagged-0.8.6
   , void-0.7.2
+  , QuickCheck-2.12.6.1
+  , erf-2.0.0.0
+  , random-1.1
+  , tf-random-0.5
+  , primitive-0.6.4.0
 ]
 
 # Override default flag values for local packages and extra-deps

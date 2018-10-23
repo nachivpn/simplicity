@@ -60,6 +60,7 @@ library
   build-depends:       base
                       , mtl
                       , constrained-categories
+		      , QuickCheck
   
   -- Directories containing source files.
   hs-source-dirs:      src

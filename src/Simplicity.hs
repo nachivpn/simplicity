@@ -9,21 +9,32 @@ import Debug.Trace
 import Data.Either
 import Data.Maybe
 import Mph
+import Control.Applicative
 import qualified Control.Category.Constrained as ConCat
 
 data Simpl i o where
-    Iden :: Types a => Simpl a a
-    Comp :: (Types a, Types b, Types c) => Simpl a b -> Simpl b c -> Simpl a c
-    Unit :: Types a => Simpl a T
-    Injl :: (Types a, Types b, Types c) => Simpl a b -> Simpl a (b :+: c)
-    Injr :: (Types a, Types b, Types c) => Simpl a c -> Simpl a (b :+: c)
+    Iden :: Types a =>
+      Simpl a a
+    Comp :: (Types a, Types b, Types c) =>
+      Simpl a b -> Simpl b c -> Simpl a c
+    Unit :: Types a =>
+      Simpl a T
+    Injl :: (Types a, Types b, Types c) =>
+      Simpl a b -> Simpl a (b :+: c)
+    Injr :: (Types a, Types b, Types c) =>
+      Simpl a c -> Simpl a (b :+: c)
     Case :: (Types a, Types b, Types r, Types d) =>
-            Simpl (r :*: a) d -> Simpl (r :*: b) d -> Simpl (r :*: (a :+: b)) d
-    Pair :: (Types a, Types b, Types c) => Simpl a b -> Simpl a c -> Simpl a (b :*: c)
-    Take :: (Types a, Types b, Types c) => Simpl a c -> Simpl (a :*: b) c
-    Drop :: (Types a, Types b, Types c) => Simpl b c -> Simpl (a :*: b) c
-    Lam  :: (Types r, Types a, Types b) => Simpl (r :*: a) b -> Simpl r (a :=>: b)
-    App  :: (Types r, Types a, Types b) => Simpl r (a :=>: b) -> Simpl r a -> Simpl r b
+      Simpl (r :*: a) d -> Simpl (r :*: b) d -> Simpl (r :*: (a :+: b)) d
+    Pair :: (Types a, Types b, Types c) =>
+      Simpl a b -> Simpl a c -> Simpl a (b :*: c)
+    Take :: (Types a, Types b, Types c) =>
+      Simpl a c -> Simpl (a :*: b) c
+    Drop :: (Types a, Types b, Types c) =>
+      Simpl b c -> Simpl (a :*: b) c
+    Lam  :: (Types r, Types a, Types b) =>
+      Simpl (r :*: a) b -> Simpl r (a :=>: b)
+    App  :: (Types r, Types a, Types b) =>
+      Simpl r (a :=>: b) -> Simpl r a -> Simpl r b
 
 instance Show (Simpl i o) where
     show Iden         = "Iden"
@@ -37,7 +48,23 @@ instance Show (Simpl i o) where
     show (Case f g)   = "(Case " ++ show f ++ "; " ++ show g ++ ")"
     show (Lam f)      = "(Lam " ++ show f ++ ")"
     show (App f x)    =  "(App " ++ show f ++ " " ++ show x ++ ")"
-    
+
+(=:=) :: Simpl a b -> Simpl c d -> Bool
+Iden =:= Iden = True
+(Comp f g) =:= (Comp x y) = f =:= x && g =:= y
+Unit =:= Unit = True
+Injl f =:= Injl g = f =:= g
+Injr f =:= Injr g = f =:= g
+Case p q =:= Case i j = p =:= i && q =:= j 
+Take f =:= Take g = f =:= g
+Drop f =:= Drop g = f =:= g
+Pair p q =:= Pair r s = p =:= r && q =:= r 
+Lam f  =:= Lam g  = f =:= g
+App f x =:= App g y = f =:= g && x =:= y 
+_ =:= _ = False
+
+
+  
 type family Hask i :: * where
   Hask T          = () 
   Hask (b :*: c)  = (Hask b, Hask c)
@@ -129,6 +156,7 @@ instance ABCC Simpl where
   -- nothing to do!
 
 beta :: Simpl i o -> Maybe (Simpl i o)
+
 -- app elimination
 beta (App (Lam f) x) = Just $ Comp (Pair Iden x) f
 
@@ -157,48 +185,23 @@ beta (Comp s (Comp t u)) = Just $ Comp (Comp s t) u
 -- subst composition
 beta (Comp t (Pair s a)) = Just $ Pair (Comp t s) (Comp t a)
 
--- no more re-writes!
-beta _ = Nothing
+-- congruence rules
+beta (App f x)  = flip App x <$> beta f <|> App f <$> beta x 
+beta (Lam f)    = Lam <$> beta f
+beta (Pair p q) = flip Pair q <$> beta p <|> Pair p <$> beta q
+beta (Comp f g) = flip Comp g <$> beta f <|> Comp f <$> beta g
+beta (Case p q) = flip Case q <$> beta p <|> Case p <$> beta q
+beta (Injl f)   = Injl <$> beta f
+beta (Injr f)   = Injr <$> beta f
+beta (Take f)   = Take <$> beta f
+beta (Drop f)   = Drop <$> beta f
 
+-- no more re-write rules
+beta _          = Nothing
 
-reducible = isJust . beta'
-
-beta' :: Simpl i o -> Maybe (Simpl i o)
-beta' t@(App f x)
-  | reducible f = App <$> beta' f <*> return x
-  | reducible x = App f <$> beta' x 
-  | otherwise = beta t
-beta' t@(Lam f)
-  | reducible f = Lam <$> beta' f
-  | otherwise   = beta t
-beta' t@(Pair p q)
-  | reducible p = Pair <$> beta' p <*> return q
-  | reducible q = Pair p <$> beta' q
-  | otherwise   = beta t
-beta' t@(Comp f g)
-  | reducible f = Comp <$> beta' f <*> return g
-  | reducible g = Comp f <$> beta' g
-  | otherwise   = beta t
-beta' t@(Case p q)
-  | reducible p = Case <$> beta' p <*> return q
-  | reducible q = Case p <$> beta' q
-  | otherwise   = beta t
-beta' t@(Injl f)
-  | reducible f = Injl <$> beta' f
-  | otherwise   = beta t 
-beta' t@(Injr f)
-  | reducible f = Injr <$> beta' f
-  | otherwise   = beta t 
-beta' t@(Take f)
-  | reducible f = Take <$> beta' f
-  | otherwise   = beta t 
-beta' t@(Drop f)
-  | reducible f = Drop <$> beta' f
-  | otherwise   = beta t 
-beta' f = beta f
-
+beta_ :: Simpl i o -> Simpl i o 
 beta_ f =
-  let mf' = beta' f
+  let mf' = beta f
   in case mf' of
-    (Just f') -> trace (show f') $ beta_ f'
+    (Just f') -> beta_ f'
     (Nothing) -> f
