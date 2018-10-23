@@ -23,13 +23,14 @@ instance Arbitrary (Simpl T T) where
           <*> (arbitrary :: Gen (Simpl T T))
     frequency [(5,return Iden),(1,comp),(4,return Unit)]
 
-instance (Types a, Types b, Arbitrary (Simpl a T),
-          Arbitrary (Simpl b T))
+instance (Types a, Types b,
+          Arbitrary (Simpl a T), Arbitrary (Simpl b T))
   => Arbitrary (Simpl (a :*: b) T) where
   arbitrary = oneof [Take <$> arbitrary, Drop  <$> arbitrary]
 
-instance (Types b, Types c, Arbitrary (Simpl T b), Arbitrary (Simpl T c))
-  => Arbitrary (Simpl T (b :*: c)) where
+instance (Types a, Types b,
+          Arbitrary (Simpl T a), Arbitrary (Simpl T b))
+  => Arbitrary (Simpl T (a :*: b)) where
   arbitrary = Pair <$> arbitrary <*> arbitrary
 
 instance (Types a, Types b, Types c, Types d,
@@ -37,20 +38,33 @@ instance (Types a, Types b, Types c, Types d,
   => Arbitrary (Simpl (a :*: b) (c :*: d)) where
   arbitrary = Pair <$> arbitrary <*> arbitrary
   
-instance (Types b, Types c, Arbitrary (Simpl T b), Arbitrary (Simpl T c))
-  => Arbitrary (Simpl T (b :+: c)) where
+instance (Types a, Types b,
+          Arbitrary (Simpl T a), Arbitrary (Simpl T b))
+  => Arbitrary (Simpl T (a :+: b)) where
   arbitrary = oneof [Injl <$> arbitrary, Injr <$> arbitrary]
 
-instance (Types a, Types b, Types r, Types d,
-           Arbitrary (Simpl (r :*: a) d), Arbitrary (Simpl (r :*: b) d))
-  => Arbitrary (Simpl (r :*: (a :+: b)) d) where
-  arbitrary = Case <$> arbitrary <*> arbitrary
+instance (Types a, Types b,
+          Arbitrary (Simpl a T), Arbitrary (Simpl b T))
+  => Arbitrary (Simpl (a :+: b) T) where
+  arbitrary = Comp (Pair Unit Iden) <$>
+    (Case
+     <$> (Drop <$> arbitrary)
+     <*> (Drop <$> arbitrary))
 
-instance (Types a, Types b, Types c,
-           Arbitrary (Simpl a c), Arbitrary (Simpl b c))
-  => Arbitrary (Simpl (a :+: b) (c)) where
+instance (Types a, Types b, Types c, Types d,
+          Arbitrary (Simpl a (c :+: d)), Arbitrary (Simpl b (c :+: d)))
+  => Arbitrary (Simpl (a :+: b) (c :+: d)) where
   arbitrary = return (Comp (Pair Unit Iden))
     <*> (Case
          <$> (Drop <$> (arbitrary))
          <*> (Drop <$> (arbitrary)))
 
+
+instance (Types a, Types b, Types c, Types d)
+  => Arbitrary (Simpl (a :+: b) (c :*: d)) where
+  --TODO
+
+instance (Types a, Types b, Types c, Types d)
+  => Arbitrary (Simpl (a :*: b) (c :+: d)) where
+  --TODO
+  
